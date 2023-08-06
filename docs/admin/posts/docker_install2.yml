@@ -1,0 +1,23 @@
+title: CentOS6上のDockerにCentOS7を入れたらはまった
+category: tools
+timestamp: 2014-08-16T22:45:00
+thumbnail: https://lh4.googleusercontent.com/-GhrtwXQtb7s/U-uCTk_-FOI/AAAAAAAACZ8/JnW0y2UER3M/s800/small_v-dark.png
+body: |-
+  前回、さくらVPS上のCentOS6にDockerをインストールしましたが、その際にコンテナイメージを<code>centos:latest</code>から作ったため、ホストはCentOS6、ゲスト(っていうのか?)はCentOS7という状態になってました。
+
+  そのまま、その環境でhttpdやらを入れてたんですが、サービスが起動できずにドはまりしました。
+
+  <!-- more -->
+
+  RHEL7系からはサービスの起動がsystemdとsystemctlが採用されておりそのため起動方法が/etc/rc.d/init.d/配下の起動スクリプトじゃなくなってます。
+
+  なので<code>systemctl</code>コマンドで有効化して起動しようとすると下記のようなエラーが出てしまいます。
+
+      bash-4.2# systemctl enable httpd.service
+      ln -s '/usr/lib/systemd/system/httpd.service' '/etc/systemd/system/multi-user.target.wants/httpd.service'
+      bash-4.2# systemctl start httpd.service
+      Failed to get D-Bus connection: No connection to service manager.
+
+  Google先生で調べるが、よく分からない・・・。ホスト側がsystemdで管理されていないのがまずいぽい?
+
+  まあ、そもそもホスト側がCentOS6なのがアカン気がするし、その後の移行作業でも問題が出そうな気がするので元にするイメージを<code>centos:centos6</code>と指定してコンテナ上もCentOS6になるようにして逃げました。

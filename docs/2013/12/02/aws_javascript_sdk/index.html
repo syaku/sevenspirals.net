@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta property="og:title" content="AWS SDK for JavaScriptでS3でファイル操作 - SEVENSPIRALS" />
+    <meta property="og:type" content="article" />
+    
+      <meta property="og:image" content="https://lh4.googleusercontent.com/-6yNW1XEmNnc/Uk-CGl_qvdI/AAAAAAAABr0/9LqbsZNWBWI/s800/62511.png" />
+    
+    <meta property="og:url" content="https://www.sevenspirals.net/2013/12/02/aws_javascript_sdk/" />
+    <title>AWS SDK for JavaScriptでS3でファイル操作 - SEVENSPIRALS</title>
+    <link title="SEVENSPIRALS" href="https://www.sevenspirals.net/feed.rss" rel="alternate" type="application/rss+xml" />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+    <link rel="stylesheet" href="/css/main.css">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <h1><a href="/"><span>SEVEN</span>SPIRALS</a></h1>
+      </div>
+    </header>
+    <main class="container">
+<div class="row article">
+  <div class="col-md-12">
+    <div class="row">
+      <div class="col-md-12">
+        <h1 class="title">AWS SDK for JavaScriptでS3でファイル操作</h1>
+        <p><time class="label label-default" datetime="2013-12-02T00:15:00+09:00">2013年12月02日</time> <span class="label label-primary">プログラミング</span></p>
+      </div>
+    </div>
+    <div class="row content">
+      <div class="col-md-12">
+        <p>ブラウザ単体でAmazon AWSのS3やDynamoDBやSQSなんかを操作できるAWS SDK for Javascriptが公開されたので使ってみました。</p>
+<!-- more -->
+<h1 id="-node-js-sdk-">基本はNode.js用SDKと同じ</h1>
+<p>扱い方は基本的にNode.js用のSDKと同じで対応していないサービスはクラスが実装されていないので扱えないという感じです。</p>
+<p>なのでどっちか覚えてればサーバーサイドの実装もブラウザ側での実装も両方割と簡単に対応出来ます。</p>
+<h1 id="-">誰でも読み書きできるコメント欄的な物を作ってみる</h1>
+<p>本当はGoogle+やFacebook認証を使ったりするんでしょうが今回は認証のないコメント欄的なものをS3を使って作りたいと思います。</p>
+<h2 id="iam-">IAMコンソールでユーザーを作成する</h2>
+<p>まず、IAMコンソールでアプリに使うユーザーを作成します。</p>
+<p>ここで作成したユーザーの<code>ARN</code>と<code>Access Key ID</code>と<code>Secret Access Key</code>は後でアプリから使うのでコピーしておきます。</p>
+<p><img src="https://lh5.googleusercontent.com/-dz4YJ6Z1ZVM/UpJIKQw517I/AAAAAAAABu8/zwUUBGJQYok/s640/capture1.png" alt=""></p>
+<p>ユーザーを作成したらS3のバケットを操作できるようにパーミッションを設定します。</p>
+<p>設定内容は以下のような感じ。<code>BUCKET_NAME</code>はアプリで使用するバケット名を記述します。</p>
+<p>ここでは指定バケットに対してS3の全てのアクションを許可しています。</p>
+<p>ここで例えばReadだけ不許可にすることで外部からファイルを受け取るためのアップローダーを作るということも出来そうです。</p>
+<pre><code>{
+  &quot;Version&quot;: &quot;2013-11-24&quot;,
+  &quot;Statement&quot;: [
+    {
+      &quot;Action&quot;: [
+        &quot;s3:*&quot;
+      ],
+      &quot;Resource&quot;: [
+        &quot;arn:aws:s3:::BUCKET_NAME&quot;
+      ],
+      &quot;Effect&quot;: &quot;Allow&quot;
+    }
+  ]
+}
+</code></pre><h2 id="-">バケットを作成する</h2>
+<p>S3のコンソールでバケットを作成します。</p>
+<p>ここでもパーミッションを設定しますが基本的にユーザー作成時に指定した内容と同じです。</p>
+<p>先ほどコピーしておいた<code>ARN</code>をここで記述します。</p>
+<pre><code>{
+  &quot;Version&quot;: &quot;2013-11-24&quot;,
+  &quot;Statement&quot;: [
+    {
+      &quot;Sid&quot;: &quot;&quot;,
+      &quot;Effect&quot;: &quot;Allow&quot;,
+      &quot;Principal&quot;: {
+        &quot;AWS&quot;: &quot;&lt;IAMで作ったユーザーのARN&gt;&quot;
+      },
+      &quot;Action&quot;: &quot;s3:*&quot;,
+      &quot;Resource&quot;: &quot;arn:aws:s3:::BUCKET_NAME/*&quot;
+    }
+  ]
+}
+</code></pre><p>パーミッションを設定したら次はCORS(Cross-Origin Resource Sharing)の設定をします。</p>
+<p>初期値ではGETしか許可されていないのでPUTも許可するようにします。</p>
+<p>また、今回の場合、Access KeyとSecretをソースに埋め込むので<code>AllowedOrigin</code>を指定しないとどこからでも操作できて多分えらい目に遭います。</p>
+<pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;CORSConfiguration xmlns=&quot;http://s3.amazonaws.com/doc/2006-03-01/&quot;&gt;
+    &lt;CORSRule&gt;
+        &lt;AllowedOrigin&gt;http://www.exmaple.com/&lt;/AllowedOrigin&gt;
+        &lt;AllowedMethod&gt;GET&lt;/AllowedMethod&gt;
+        &lt;AllowedMethod&gt;PUT&lt;/AllowedMethod&gt;
+        &lt;MaxAgeSeconds&gt;3000&lt;/MaxAgeSeconds&gt;
+        &lt;AllowedHeader&gt;*&lt;/AllowedHeader&gt;
+        &lt;AllowedHeader&gt;Authorization&lt;/AllowedHeader&gt;
+    &lt;/CORSRule&gt;
+&lt;/CORSConfiguration&gt;
+</code></pre><h2 id="-">サンプルコード</h2>
+<p>とりあえず初期化処理です。
+先ほど作成したAccess KeyとSecretを設定し、S3クラスを初期化します。</p>
+<pre><code>var messageGet, messagePost, s3;
+
+AWS.config.update({
+  accessKeyId: &#39;***********************&#39;,
+  secretAccessKey: &#39;**********************************&#39;
+});
+
+s3 = new AWS.S3({
+  region: &#39;ap-northeast-1&#39;,
+  maxRetries: 15
+});
+</code></pre><p>AWSへのリクエストは非同期で行われるので同期処理するためにJsDeferredも初期化。</p>
+<pre><code>Deferred.define();
+</code></pre><p>で、実際の初期化処理がこちら。
+バケット名とKey(ファイル名みたいなもの)とContentTypeとBody(ファイルの中身)を設定して<code>putObject</code>を呼び出します。</p>
+<p>呼び出し後は非同期で実行され、何らかの理由で失敗したらerrが成功したらresultが指定されてコールバックされます。</p>
+<pre><code>messagePost = function() {
+  var key, params;
+  key = new Date().getTime().toString();
+  params = {
+    Bucket: &#39;BUCKET_NAME&#39;
+    Key: key,
+    ContentType: &#39;text/plain&#39;,
+    Body: $(&quot;#message&quot;).val()
+  };
+  return s3.putObject(params, function(err, result) {
+    if (err) {
+      return console.log(err);
+    } else {
+      return console.log(data);
+    }
+  });
+};
+</code></pre><p>読み込みも簡単です。
+バケット名とKeyを指定して<code>getObject</code>関数を呼び出します。
+コールバックは書き込みと同じで失敗すればerrが成功すればdataにファイルの情報がセットされ返ってきます。</p>
+<p>ここではBodyの中身を文字列化してJsDeferredに渡しています。</p>
+<pre><code>messageGet = function(key) {
+  var deferred;
+  deferred = new Deferred();
+  s3.getObject({
+    Bucket: &#39;BUCKET_NAME&#39;,
+    Key: key
+  }, function(err, data) {
+    return deferred.call(data.Body.toString());
+  });
+  return deferred;
+};
+</code></pre><p>起動時処理。
+<code>listObjects</code>関数でバケット内のファイルの一覧を取得し順番に<code>messageGet</code>関数を呼んでファイルの中身を取得してリストに詰めています。</p>
+<p>全部取り終わってからコンソールに吐き出すようにJsDeferredを使っています。(実際にはloopじゃなくてparallelのがいいと思う)</p>
+<pre><code>$(function() {
+  return s3.listObjects({
+    Bucket: &#39;BUCKET_NAME&#39;
+  }, function(error, data) {
+    var result;
+    if (error) {
+      return console.log(error);
+    } else {
+      result = [];
+      return Deferred.loop(data.Contents.length, function(i) {
+        return messageGet(data.Contents[i].Key).next(function(data) {
+          return result.push(data);
+        });
+      }).next(function() {
+        // 実際には投稿日順で並び替えたりする
+        return console.log(result);
+      });
+    }
+  });
+});
+</code></pre><h2 id="-">感想のような物</h2>
+<p>このブログは静的HTMLを吐いてS3に配置していますがこんな感じのちょっとしたツールに簡単にDBやファイル保存の機能を付加できるのは大変夢が広がって面白いです。</p>
+<p>ただ、出来る事がすごく増えるわけではないので別に既存のサーバーサイド処理を置き換えるものではなく、別の要件でサーバーを立てるならサーバーサイドでやった方が良いんじゃないかと思います。</p>
+<p>逆に全くの新造なら全部これを使ってサーバーを立てないというサービスもあっても良いんじゃ無いかとも思ったのでとりあえずこのブログを実験台に色々試してみたいと思います。(まずはzenbackに頼ってる機能の置き換えかな)</p>
+
+      </div>
+    </div>
+    <div class="row social-row">
+      <div class="col-md-12 social-wrap">
+        <div class="social">
+          <div data-href="https://www.sevenspirals.net/2013/12/02/aws_javascript_sdk/" data-layout="box_count" data-action="like" data-show-faces="true" data-share="false" class="fb-like"></div>
+        </div>
+        <div class="social"><a href="https://twitter.com/share" data-count="vertical" data-lang="ja" class="twitter-share-button">ツイート</a></div>
+        <div class="social">
+          <div data-size="tall" class="g-plusone"></div>
+        </div>
+        <div class="social"><a href="http://b.hatena.ne.jp/entry/https://www.sevenspirals.net/2013/12/02/aws_javascript_sdk/" data-hatena-bookmark-title="AWS SDK for JavaScriptでS3でファイル操作" data-hatena-bookmark-layout="vertical-balloon" data-hatena-bookmark-lang="ja" title="このエントリーをはてなブックマークに追加" class="hatena-bookmark-button"><img src="https://b.hatena.ne.jp/images/entry-button/button-only.gif" alt="このエントリーをはてなブックマークに追加" width="20" height="20" style="border: none;"></a></div>
+        <div class="social"><a data-pocket-label="pocket" data-pocket-count="vertical" data-lang="ja" class="pocket-btn"></a></div>
+      </div>
+    </div>
+    <div class="row recommend">
+      <div class="col-md-12">
+        <div class="ninja-recommend-block" id="7173a3dce951cafcac8afcc7afa0f644">
+          <script type="text/javascript" charset="utf-8" src="http://rcm.shinobi.jp/js/imp.js"></script>
+          <script type="text/javascript" charset="utf-8" src="http://rcm.shinobi.jp/r/7173a3dce951cafcac8afcc7afa0f644" async></script>
+        </div>     
+      </div>
+    </div>
+  </div>
+</div>
+    </main>
+  <footer>
+    <div class="container">
+      <div class="row">
+        <div class="col-md-3">
+          <h4>Archives</h4>
+          <ul class="list-unstyled">
+            
+              <li><a href="/2015/07/">2015年07月</a></li>
+            
+              <li><a href="/2015/06/">2015年06月</a></li>
+            
+              <li><a href="/2014/10/">2014年10月</a></li>
+            
+              <li><a href="/2014/08/">2014年08月</a></li>
+            
+              <li><a href="/2013/12/">2013年12月</a></li>
+            
+              <li><a href="/2013/09/">2013年09月</a></li>
+            
+              <li><a href="/2013/05/">2013年05月</a></li>
+            
+              <li><a href="/2013/02/">2013年02月</a></li>
+            
+              <li><a href="/2013/01/">2013年01月</a></li>
+            
+              <li><a href="/2012/11/">2012年11月</a></li>
+            
+              <li><a href="/2012/10/">2012年10月</a></li>
+            
+              <li><a href="/2012/07/">2012年07月</a></li>
+            
+              <li><a href="/2012/06/">2012年06月</a></li>
+            
+          </ul>
+        </div>
+        <div class="col-md-3">
+          <h4>Categories</h4>
+          <ul class="list-unstyled">
+            
+              <li><a href="/archive/category/diary/">日記</a></li>
+            
+              <li><a href="/archive/category/programming/">プログラミング</a></li>
+            
+              <li><a href="/archive/category/skyrim/">Skyrim</a></li>
+            
+              <li><a href="/archive/category/stationery/">文具</a></li>
+            
+              <li><a href="/archive/category/tools/">ツール</a></li>
+            
+              <li><a href="/archive/category/uncategorized/">未分類</a></li>
+            
+          </ul>
+        </div>
+        <div class="col-md-6">
+          <div class="row">
+            <div class="col-md-12">
+              <h4>About me.</h4>
+            </div>
+            <div class="col-md-4">
+              <img style="width:100px;height:100px;" src="//www.gravatar.com/avatar/bf73f66e691dad0add1458e4352e9887?s=100" alt="avatar" itemprop="image" id="avatar">
+            </div>
+            <div class="col-md-8">
+              <p><a href="http://plus.google.com/114867807906638049811?rel=author" itemprop="url"><span itemprop="name" rel="author">Takayuki TAKEMURA</span></a></p>
+              <p>東京でプログラマーやってます。イラスト程度には痩せたい。</p>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-12">
+              <h4>About this site.</h4>
+              <p>このブログの記載内容は私個人の主張・嗜好・思い込みであり、私が所属する企業・団体を含むいかなる組織の公式見解でもありません。</p>
+            </div>
+          </div>
+      </div>
+      <div class="row">
+        <div class="col-md-12">
+          <p id="copyright" class="pull-right">Copyright (C) 2012 Takayuki TAKEMURA All Rights Reserved.</p>
+        </div>
+      </div>
+    </div>
+  </footer>
+    <div id="fb-root"></div>
+    <script>(function(d, s, id) {
+    var js, fjs = d.getElementsByTagName(s)[0];
+    if (d.getElementById(id)) return;
+    js = d.createElement(s); js.id = id;
+    js.src = "//connect.facebook.net/ja_JP/sdk.js#xfbml=1&version=v2.5";
+    fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'facebook-jssdk'));</script>
+    <script>
+      !function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.async=true;js.src=p+'://platform.twitter.com/widgets.js';fjs.parentNode.insertBefore(js,fjs);}}(document, 'script', 'twitter-wjs');
+    </script>
+    <script type="text/javascript">
+      window.___gcfg = {lang: 'ja'};
+      (function() {
+        var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+        po.src = 'https://apis.google.com/js/platform.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+      })();
+    </script>
+    <script type="text/javascript", src="https://b.hatena.ne.jp/js/bookmark_button.js", charset="utf-8", async="async"></script>
+    <script type="text/javascript">
+      !function(d,i){if(!d.getElementById(i)){var j=d.createElement("script");j.id=i;j.async=true;j.src="https://widgets.getpocket.com/v1/j/btn.js?v=1";var w=d.getElementById(i);d.body.appendChild(j);}}(document,"pocket-btn-js");
+    </script>
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-35711724-1']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+    <input type="hidden" name="OBKey" value="QeLGFjwyQ0CvcIeuly75Ag==">
+    <script LANGUAGE="JavaScript">var OBCTm='1404597594452';</script>
+    <script LANGUAGE="JavaScript" src="//widgets.outbrain.com/claim.js"></script>
+  </body>
+</html>

@@ -1,0 +1,83 @@
+title: さくらVPS上のCentOSにDockerをインストールした
+category: tools
+timestamp: 2014-08-14T00:14:00
+thumbnail: https://lh4.googleusercontent.com/-GhrtwXQtb7s/U-uCTk_-FOI/AAAAAAAACZ8/JnW0y2UER3M/s800/small_v-dark.png
+body: |-
+  Dockerというコンテナ型の仮想化ソフトがありまして、以前(確かまだポートが固定出来なかった頃)にVirtualBox上で試したんですが、色々バージョンアップを重ね1.0も(割と前に)出たので実際に使おうということで(本当はUbuntuが推奨環境のはずですが)さくらVPSのCentOS上にインストールしてみました。
+
+  <!-- more -->
+
+  # まずEPELのインストール
+
+  DockerのパッケージはEPELリポジトリにあるのでまずEPELをインストールします。
+
+  既にインストールしていることも多いと思いますので導入済みならスキップしても構いません。
+
+      $ wget http://ftp-srv2.kddilabs.jp/Linux/distributions/fedora/epel/6/x86_64/epel-release-6-8.noarch.rpm
+      $ sudo rpm -ivh epel-release-6-8.noarch.rpm
+
+  特に問題無く成功すると思います。
+
+  標準のリポジトリと追加リポジトリの優先順位を細かく設定したい場合は<code>yum-priorities</code>をインストールすることで優先順位の制御が出来ます。
+
+  # docker-ioのインストール
+
+  無事EPELのインストールが終わったら次はDocker本体のインストールを行います。
+
+  パッケージ名はdocker-ioになるので、yumコマンドでインストールします。
+
+      $ sudo yum install docker-io
+
+  また、起動時に自動で立ち上がるように設定しておきます。
+
+      $ sudo service docker start
+      $ sudo chkconfig docker on
+
+  インストールそのものはこれで完了です。
+
+  # イメージの作成
+
+  準備は整ったので仮想環境のイメージを作りたいと思います。
+
+  とりあえず、CentOS上で動かしてるサービスを移設したいのでCentOSのイメージを作ります。
+
+  既にCentOSのベースになるイメージは存在してるので<code>docker pull</code>コマンドでダウンロードします。
+
+      $ sudo docker pull centos:latest
+
+  ダウンロードが終わったら<code>docker images</code>コマンドで実際に作成されていることを確認します。
+
+      $ sudo docker images centos
+      REPOSITORY          TAG                 IMAGE ID            CREATED             VIRTUAL SIZE
+      centos              latest              b157b77b1a65        2 weeks ago         243.7 MB
+
+  上記のような感じになってたら成功です。
+
+
+  # 実行
+
+  イメージが作られたのでおもむろに実行。
+
+  とりあえず今回はコンテナ名は特に指定せずに実行します。
+
+      $ sudo docker run -i -t centos /bin/bash
+
+  するとこんなエラーが出てしまいました。
+
+  <pre><samp>2014/08/10 14:38:36 Error: Cannot start container 6a8679e8f09d2ef4a52408008287a0efcef37b904914b27687064dae25081c2a: write /cgroup/devices/docker/6a8679e8f09d2ef4a52408008287a0efcef37b904914b27687064dae25081c2a/cgroup.procs: invalid argument</samp></pre>
+
+  調べたところ、CentOS6の場合、Kernelのバージョンが2.6.32-431以上でないと動かない模様。
+
+  というか普通に見落としてました。すいません。
+
+  というわけで<code>sudo yum update</code>でまとめて更新。
+
+      $ sudo yum update
+
+  更新が終わったら再び実行。仮想環境上のbashに入れれば成功です。
+
+  初回なのでコンテナ作成も同時に行っていますがそれでも一瞬で起動します。
+
+  ここがDockerの良いところ。
+
+  というわけで、入れ物は出来たので次からは今動いているサーバーをどんどんDocker上に移行していきます。
