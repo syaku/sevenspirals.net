@@ -1,0 +1,121 @@
+title: The Semantic Grid System
+category: programming
+timestamp: 2012-11-23T18:57:31
+thumbnail: http://farm6.staticflickr.com/5217/5420762245_548a535ffd_z.jpg
+body: |-
+  [Bootstrap](http://twitter.github.com/bootstrap/)は私のようなセンスいまいちな開発者でも簡単に見栄えの良いサイトが作れる素晴らしいフレームワークなんですが1点だけ気になって夜も眠れないところがあります。(昨夜は熟睡でした)
+
+  <!-- more -->
+
+  # 気になるところって?
+  気になるところというのは段組を表現するためのGridシステムで、例えばBootstrapで左右に分割したレイアウトにしようと思ったら、
+
+  <pre>
+  &lt;div class="container"&gt;
+    &lt;div class="row"&gt;
+      &lt;div id="navigation" class="span6"&gt;
+        ～ナビゲーション～
+      &lt;/div&gt;
+      &lt;div id="content" class="span6"&gt;
+        ～コンテンツ～
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+  </pre>
+
+  のようにします。
+
+  class属性に<code>.row</code>とか<code>.span*</code>とか付けてGrid構造を記述していますが、これではHTML内にGridのレイアウトが記述されているため、レイアウトを変えようと思ったらHTMLを変更しないといけません。
+
+  また、特に<code>.row</code>は純粋にGridの行を記述するためのものなので出来れば書きたくありません。
+
+  ただ、これはCSSを直接使った場合であってGitHubリポジトリから取得すればlessファイルが同梱されています。
+
+  この中に記述されたMixinを使えば任意のCSSセレクタを使ってGridレイアウトを定義できます。
+
+  <pre>
+  @import "bootstrap/variables";
+  @import "bootstrap/mixins";
+
+  .side {
+    .makeColumn(6);
+  }
+  .main {
+    .makeColumn(6);
+  }
+  </pre>
+
+  こんな感じで記述したlessファイルを<code>lessc</code>コマンドでコンパイルすると<code>.side</code>と<code>.main</code>を指定した要素が<code>.span6</code>を指定したのと同じになります。
+
+  で、このスタイルを使用するように書き換えたHTMLは以下のように、
+
+  <pre>
+  &lt;div class="container"&gt;
+    &lt;div class="row"&gt;
+      &lt;div id="navigation" class="side"&gt;
+        ～ナビゲーション～
+      &lt;/div&gt;
+      &lt;div id="content" class="main"&gt;
+        ～コンテンツ～
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+  </pre>
+
+  <code>.span6</code>という決め打ちがなくなったので例えば<code>.side</code>の幅を減らして<code>.main</code>を広く取りたいとなったときにスタイルシートを変更するだけで対応できるようになります。
+
+  <code>.container</code>や<code>.row</code>についても<code>.container-fixed();</code>、<code>.makeRow();</code>というMixinが定義されているので置き換える事が可能ですが、今回の例では**特に例を思いつかなかったので**そのままです。
+
+  <code>.row</code>の存在が何となく気に入らない（おい）以外は固定幅ならこれで問題無く使えるんですがResponsiveな場合や、複雑なレイアウトだと**計算が面倒なので**<code>.row-fluid</code>を使いたいんですが何故か上手くいかずに挫折。
+
+  Responsiveな場合はメディアクエリの内容にに応じて<code>@gridColumnWidth</code>と<code>@gridGutterWidth</code>の値を定義してやればいけそうなんですがfluidだけはどうもこれらを%指定にするだけでは駄目らしく上手く動いてくれません。(やり方知ってるよという方是非教えて下さい。)
+
+  # ここから本題
+  で、これを解決するために何か無いかと探していたら今回のタイトルの[The Semantic Grid System](http://semantic.gs)(以下長いのでURLからsemantic.gs)が見つかったので使ってみました。
+
+  これは何かというと、先ほど出てきた<code>.makeRow();</code>や<code>.makeColumn();</code>のようなGridレイアウトのためのMixin定義で、less, scss, stylの3形式で提供されています。
+
+  提供されるMixinは、それぞれ<code>.makeRow();</code>と<code>makeColumn();</code>に対応する<code>.row();</code>と<code>.column();</code>、offsetのための<code>.push();</code>と<code>.pull();</code>です。
+
+  <code>.container</code>に相当する物はないので自分で定義する必要がありますが、初期設定では(固定幅なら)Bootstrapの<code>.container</code>がそのまま使えます。
+
+  これを使って先ほどのHTMLとスタイルシートを書き換えてみます。
+
+  まずlessファイルから、
+
+  <pre>
+  @import "grid"
+
+  .side {
+    .column(6);
+  }
+  .main {
+    .column(6);
+  }
+  </pre>
+
+  あんまり変わりませんね。次はHTML、
+
+  <pre>
+  &lt;div class="container"&gt;
+    &lt;div id="navigation" class="side"&gt;
+      ～ナビゲーション～
+    &lt;/div&gt;
+    &lt;div id="content" class="main"&gt;
+      ～コンテンツ～
+    &lt;/div&gt;
+  &lt;/div&gt;
+  </pre>
+
+  <code>.row</code>が消せました、やったね。サイトのサンプルにあるように複雑なレイアウトだと<code>.row();</code>を使う必要がありますが、簡単なレイアウトなら無くても動作します。
+
+  また、デフォルトでは固定幅ですが、<code>@total-width</code>に<code>100%</code>を指定するとfluid layoutとして動作します。
+
+  先ほどのようにBootstrapの<code>.container</code>を使う場合、Responsive
+  だと、コンテナの幅がウィンドウ(画面)のサイズによって変わるので、fluid layoutにして追従するようにした方が何かと楽です。
+
+  注意点としては、BootstrapではSmartphone向けの表示になると全ての<code>.span*</code>の幅が100%になりますが、semantic.gsではそういう指定は特に入っていないので必要なら自分で指定します。
+
+  最初、Bootstrapと競合しないか不安だったんですがある程度考慮して作られているらしく、特に問題無く動いています。
+
+  というわけで、<code>.container</code>こそ残っていますが、それ以外はほぼ満足のいく結果になったのでこれからは安眠できそうです。(繰り返しますが昨夜は熟睡でした)

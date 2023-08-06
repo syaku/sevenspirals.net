@@ -1,0 +1,33 @@
+title: Facebookコメントも試す
+timestamp: 2012-07-04T01:40:49
+body: |-
+  というわけでコメントツールシリーズ第3弾。
+  
+  最近身の回りでやたらとFacebookが流行り始めたので実はこれでいいんじゃないかという説もあります。
+  
+  <!-- more -->
+  使い方は簡単。
+  
+  [facebook DEVELOPERSサイト](https://developers.facebook.com/docs/reference/plugins/comments/)へアクセスして必要な項目を設定、Get Codeボタンを押して埋め込み用のコードを取得します。
+  
+  取得したコードをサイトのテンプレートに埋め込んでやれば使えるようになります。
+
+  あ、BlogとかだとURLはちゃんと記事のURLを自動で埋めるようにしないと多分おかしげな事になると思います。
+  
+  というわけで、試しに貼り付けたのがこちら。
+  
+  さすがにzenbackと一緒に貼るとめちゃくちゃ重いですね。
+  
+  <div id="fb-root"></div>
+  <script>(function(d, s, id) {
+    var js, fjs = d.getElementsByTagName(s)[0];
+    if (d.getElementById(id)) return;
+    js = d.createElement(s); js.id = id;
+    js.src = "//connect.facebook.net/ja_JP/all.js#xfbml=1";
+    fjs.parentNode.insertBefore(js, fjs);
+  }(document, 'script', 'facebook-jssdk'));</script>
+  
+  <div class="fb-comments" data-href="http://www.sevenspirals.net/20120701.html" data-num-posts="3"></div>
+
+  #### 追記
+  何故か幅が100%にならなかったのでCSSで無理矢理100%にしてみた。

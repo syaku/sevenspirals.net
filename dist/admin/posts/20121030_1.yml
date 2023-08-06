@@ -1,0 +1,167 @@
+title: MOGOK上にRailsアプリを構築する(Windows編)
+category: programming
+timestamp: 2012-10-31T12:47:11
+thumbnail: https://lh3.googleusercontent.com/-13vAQJD3zBQ/UJ4v9WvWYtI/AAAAAAAAA9I/rYAj5Ti7m6o/s640-Ic42/ruby_org.png
+body: |-
+  IIJが提供するRuby PaaSのMOGOKがオープンβサービスを開始したので早速MOGOK上にアプリケーションを構築してみたいと思います。
+
+  最初ということで基本的にはMOGOKのサイトのチュートリアルをなぞる形で進めていきます。
+
+  で、何を作るかですが、こういうのはコンソールアプリはHello World、WEBサービスはToDoリストを作るのが伝統らしい(嘘)のでその伝統に従って今回はToDoリストを作ってみたいと思います。
+
+  <!-- more -->
+
+  #### SDKインストール
+
+  まず何はなくとも開発環境をインストールしないといけないんですが、Windowsに関して言えばインストーラを実行するだけでRubyからRailsからMySQLからコマンドラインツールまで全部入ります。簡単ですね。
+
+  SDKのインストールが完了すると、スタートメニューに"MOGOK Windows Client Packages"というのが追加されているのでその中の"msys.bat"を実行するとツール等にパスが通った状態のコンソールが立ち上がります。作業は基本的にこのコンソール上で行います。
+
+  #### Railsアプリのひな形を作る
+
+  コンソールを立ち上げるといきなり/binフォルダだったりするんでまずは適当な場所に作業用のフォルダを作成します。
+
+  日本語ユーザー名でもちゃんと動くかは試してませんがわかりやすいところと言うことで今回はDocumentsフォルダの配下にrails_appsフォルダを作成してその中で作業することにします。
+
+      $ mkdir rails_apps
+      $ cd rails_apps
+
+  作業フォルダに入ったらまずRailsアプリケーションのひな形を作ります。アプリケーション名は今回はmogok-todoとします。
+
+      $ rails new mogok-todo -d mysql
+      ～大量の出力～
+      is installed.
+
+  コンソールにどばーっと出力されますが、特にエラーっぽい表示がなければひな形の作成は成功です。＜おおざっぱ
+  ひな形を作成したら次はGemfileを編集します。18行目辺りの、
+
+      # gem 'therubyracer', :platforms => :ruby
+
+  上記のコメントアウトを外します。
+
+  MOGOKサイトのチュートリアルではさらっと流していますが**therubyracer**はV8のJavaScriptインタプリタをrubyの中に突っ込んじまおうというライブラリらしいです。
+
+  MOGOKで使われているRailsは3.2.8なので3.1から採用されたcoffee-scriptとかの為かなーと思いますがすいません、Rails自体久々に触ったのでまだよく分かってません。（爆）
+
+  *:platforms => :ruby*はC Rubyの場合のみインストールという指定ですね。JRubyとかではちゃんと動かないらしい。
+
+  Gemfileを書き換えたらインストールをしないといけないので以下のコマンドでインストールします。が、その前にMySQLのサービスを起動します。私の環境ではSDKインストール直後ではサービスは起動していませんでした。
+
+  ただし、これまた私の環境ではサービスが動いていても*#&lt;Mysql2::Error: Can't connect to MySQL server on 'localhost' (10061)&gt;*というエラーが出たので**database.yml**のhost指定を*localhost*から*127.0.0.1*へ書き換えました。
+
+  無事MySQLが動いていれば以下のコマンドを実行。
+
+      $ cd mogok-todo
+      $ bundle install
+      $ rake db:create:all
+
+  ここでエラーが出なければひな形の作成は終了です。
+
+  #### アプリケーションを作り込む
+
+  ここからはRailsアプリを作り込んでいきますが、あんまり複雑なのを作っても仕方ないので単純にタイトルと終了フラグを持つだけのモデルを作成します。
+
+  まずは*rails generate*コマンドでモデル、コントロール、ビューのひな形を作成します。
+
+      $ rails generate scaffold task titie:string done:boolean
+      $ rake db.migrate
+
+  基本的なCRUDの処理はこれで出来てしまう&amp;余りにも公式チュートリアルそのままだとまずいので<a href='http://twitter.github.com/bootstrap/'>Twitter Bootstrap</a>を使ってViewをもう少しかっこよくしましょう。
+
+  公式サイトから*bootstrap.zip*をダウンロードしてきてその中の*cssフォルダ*と*imgフォルダ*をpublicフォルダにコピーします。
+
+  そして、BootstrapのCSSを使うために*app/views/layouts/application.html.erb*を以下のように書き換えます。
+
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>ToDoリスト</title>
+          <%= stylesheet_link_tag    "/css/bootstrap.min.css" %>
+          <%= stylesheet_link_tag    "application", :media => "all" %>
+          <%= javascript_include_tag "application" %>
+          <%= csrf_meta_tags %>
+        </head>
+        <body>
+          <div class='container'>
+            <%= yield %>
+          </div>
+        </body>
+      </html>
+
+  ただ、標準でsass-railsが入ってるので実際にはsass-rails-bootstrapとか使った方がカスタマイズもやりやすいと思います。
+
+  あとはBootstrapの書式に従ってビューを順次書き換えや細かな機能を実装していきます。
+
+  そうしてできあがったのが<a href='http://mogok-todo-007.ruby.iijgio.com/tasks'>こちら</a>になります。
+
+  完了は削除というワイルド仕様です。
+
+  いくらRailsアプリの作成自体は本題じゃないと言ってももうちょっと真面目に作れと自分でも思います。はい。
+
+  最後にproduction環境でstaticなファイルを扱うために*config/environments/production.rb*の以下の値を*false*から*true*に書き換えます。
+
+      config.server_static_assets = true
+
+  #### Gitリポジトリの作成
+
+  MOGOKにデプロイするためにGitリポジトリを作成します。
+
+  この段階ではまだローカルリポジトリの操作なので普通にgitコマンドでリポジトリを作成します。
+
+      $ git init
+      $ git add .
+      $ git commit -m "first commit"
+
+  特にここでエラーが出ることはないと思いますが以下のコマンドでリポジトリのステータスを確認します。
+
+      $ git status
+
+  正常なら下記のような表示がコンソールに出力されます。
+
+      # On branch master
+      nothing to commit (working directory clean)
+
+  #### MOGOKにデプロイする
+
+  いよいよクラウドにデプロイします。
+
+  コンソール上でMOGOKの操作を行うには<code>mogok</code>コマンドを使用します。
+
+  とりあえずおもむろに<code>$ mogok -v</code>でバージョン確認。
+
+  現時点では1.0.0となっているはずです。
+
+  <code>$ mogok list</code>でアプリケーションの一覧が取得できます。まだ何も登録していなければ何も表示されません。
+
+  初回実行時はログインIDとパスワードを聞かれるはずなのでユーザー登録の際に登録したIDとパスワードを入力して下さい。
+
+  で、本番。下記のコマンドでMOGOKクラウド上にアプリケーションを登録します。
+
+      $ mogok create mogok-todo-XXXX
+
+  アプリケーション名は全体でユニークな必要があるのでXXXXの部分を適当な文字列にするなり全く違う名前を付けるなりして下さい。
+
+  成功するとGitのリモートリポジトリが登録されるので、<code>$ git remote -v</code>でちゃんと登録されているか確認して下さい。上手くいっているようであれば<code>$ git push mogok master</code>でリモートリポジトリにプッシュ。
+
+  #### ビルドして実行する
+
+  プッシュが成功したら、<code>$ mogok build</code>でビルドして実行します。
+
+
+  割と時間がかかりますが、ビルドが終わったら普通のRailsアプリと同じようにdb:migrateを行います。
+
+  コマンドは以下のようにmogokコマンドから呼び出します。
+
+      $ mogok rake db:migrate
+
+  migrateも正常に終わったら<code>$ mogok start</code>でアプリケーションを開始します。
+
+  正常に起動したら、<code>$ mogok info</code>を実行して表示されるURLにアクセスして動作を確認します。
+
+  #### 使ってみての感想
+
+  開発環境の構築やデプロイが一発で出来るのはさすがに楽です。
+
+  作ってる途中のはまりどころは、単純に私がRailsに慣れてないからですがrails newの際に-d mysqlを付け忘れてはまったり、config.server_static_assetsを書き換え忘れてはまったりしました。
+
+  個人的にはマイブームはCoffeeScriptなのでHerokuのある状況でRailsしかないのはどうなのとか少しは思いますが、日本語の情報やサポートもありますし、正式版の価格次第ですがRails使うつもりなら選択肢としては良いんじゃないかと思います。
